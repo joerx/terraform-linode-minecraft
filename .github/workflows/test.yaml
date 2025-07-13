@@ -1,0 +1,27 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform_test:
+    name: Terraform Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [server, stackscript]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup terraform
+        uses: hashicorp/setup-terraform@v3
+        # with:
+        #   terraform_version: "1.11.1"
+      - name: Terraform syntax & formatting checks
+        run: make check-fmt MODULE=${{ matrix.module }}
+      - name: Run tests
+        run: make test MODULE=${{ matrix.module }}
