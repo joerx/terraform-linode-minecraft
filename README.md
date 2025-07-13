@@ -1,6 +1,6 @@
 # Minecraft on Linode
 
-Terraform module to deploy Minecraft servers on Linode using a Stackscript. This repo contains two modules, one to deploy the shared stackscript and one to deploy the server instances themselves.
+Terraform module to deploy Minecraft servers on Linode using a Stackscript. This repo contains two modules, one to deploy the shared stackscript and one to deploy the server instances themselves. You can download the modules from the releases page.
 
 ## Prerequisites
 
