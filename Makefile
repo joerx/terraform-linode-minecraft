@@ -36,7 +36,7 @@ clean:
 
 .PHONY: test
 test:
-	terraform -chdir=$(MODULE) init
+	terraform -chdir=$(MODULE) init -upgrade
 	terraform -chdir=$(MODULE) test
 
 .PHONY: check-fmt
