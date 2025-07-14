@@ -1,9 +1,4 @@
 locals {
-  # Check out https://registry.terraform.io/providers/linode/linode/latest/docs/data-sources/object_storage_endpoints
-  oss_endpoints = {
-    "eu-central" = "https://eu-central-1.linodeobjects.com"
-  }
-
   # Any better way to do this?
   minecraft_download_urls = {
     "1.19.3" = "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"

@@ -4,8 +4,7 @@ locals {
   hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
 
-  public_ip    = tolist(linode_instance.mc.ipv4)[0]
-  oss_endpoint = var.backup.endpoint != null ? var.backup.endpoint : local.oss_endpoints[var.region]
+  public_ip = tolist(linode_instance.mc.ipv4)[0]
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -71,7 +70,7 @@ resource "linode_instance" "mc" {
     "OSS_BUCKET"             = var.backup.bucket
     "OSS_ACCESS_KEY_ID"      = linode_object_storage_key.k.access_key
     "OSS_SECRET_ACCESS_KEY"  = linode_object_storage_key.k.secret_key
-    "OSS_ENDPOINT"           = local.oss_endpoint
+    "OSS_ENDPOINT"           = var.backup.endpoint
   }
 }
 

@@ -32,7 +32,8 @@ variables {
   region            = "eu-central"
 
   backup = {
-    bucket = "a-bucket"
+    bucket   = "a-bucket"
+    endpoint = "https://eu-central-1.linodeobjects.com"
   }
 }
 
@@ -182,17 +183,4 @@ run "oss_endpoint_set" {
     condition     = linode_instance.mc.stackscript_data["OSS_ENDPOINT"] == "https://eu-central-1.linodeobjects.com"
     error_message = "OSS endpoint not set correctly in stackscript data"
   }
-}
-
-run "invalid_region" {
-  command = plan
-
-  variables {
-    name   = run.setup.random_pet
-    region = "invalid-region"
-  }
-
-  expect_failures = [
-    var.region,
-  ]
 }

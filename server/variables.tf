@@ -43,11 +43,6 @@ variable "image" {
 variable "region" {
   description = "Region to deploy the instance to"
   type        = string
-
-  validation {
-    condition     = contains(keys(local.oss_endpoints), var.region)
-    error_message = "Unsuported region, valid values are: ${join(", ", keys(local.oss_endpoints))}"
-  }
 }
 
 variable "instance_type" {
@@ -81,7 +76,7 @@ variable "backup" {
 
   type = object({
     bucket   = string
-    endpoint = optional(string)
+    endpoint = string
   })
 }
 
