@@ -41,7 +41,7 @@ apt-key adv \
 curl -O https://cdn.azul.com/zulu/bin/zulu-repo_1.0.0-3_all.deb
 apt-get -y install ./zulu-repo_1.0.0-3_all.deb
 
-apt-get update && apt-get -y install zulu19-jre
+apt-get update && apt-get -y install zulu21-jre
 
 # AWS CLI
 apt-get -y install unzip
