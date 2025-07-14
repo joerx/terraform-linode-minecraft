@@ -1,16 +1,10 @@
 locals {
-  label = "${var.stage}-${var.service}"
-  tags  = ["service:${var.service}", "stage:${var.stage}"]
+  label       = "${var.stage}-${var.prefix}-${var.name}-${random_string.s.result}"
+  short_label = "${var.stage}-${var.prefix}-${substr(var.name, 0, 21)}-${random_string.s.result}"
+  tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
 
-  minecraft_download_urls = {
-    "1.19.3" = "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"
-    "1.19.4" = "https://piston-data.mojang.com/v1/objects/8f3112a1049751cc472ec13e397eade5336ca7ae/server.jar"
-    "1.21.7" = "https://piston-data.mojang.com/v1/objects/05e4b48fbc01f0385adb74bcff9751d34552486c/server.jar"
-  }
-
-  minecraft_port = "25565"
-  ssh_port       = "22"
-  public_ip      = tolist(linode_instance.mc.ipv4)[0]
+  public_ip    = tolist(linode_instance.mc.ipv4)[0]
+  oss_endpoint = var.backup.endpoint != null ? var.backup.endpoint : local.oss_endpoints[var.region]
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -18,12 +12,18 @@ resource "tls_private_key" "ssh_key" {
   rsa_bits  = 2048
 }
 
+resource "random_string" "s" {
+  length  = 3
+  special = false
+  upper   = false
+}
+
 resource "random_password" "root_pw" {
   length = 20
 }
 
 resource "linode_firewall" "fw" {
-  label = local.label
+  label = local.short_label
   tags  = local.tags
 
   inbound_policy  = "DROP"
@@ -68,9 +68,9 @@ resource "linode_instance" "mc" {
     "DIFFICULTY"             = var.difficulty
     "MINECRAFT_DOWNLOAD_URL" = local.minecraft_download_urls[var.minecraft_version]
     "OSS_BUCKET"             = var.backup.bucket
-    "OSS_ACCESS_KEY_ID"      = var.backup.access_key_id
-    "OSS_SECRET_ACCESS_KEY"  = var.backup.secret_key
-    "OSS_ENDPOINT"           = var.backup.endpoint
+    "OSS_ACCESS_KEY_ID"      = linode_object_storage_key.k.access_key
+    "OSS_SECRET_ACCESS_KEY"  = linode_object_storage_key.k.secret_key
+    "OSS_ENDPOINT"           = local.oss_endpoint
   }
 }
 
@@ -79,4 +79,14 @@ resource "linode_domain_record" "n" {
   name        = local.label
   target      = local.public_ip
   record_type = "A"
+}
+
+resource "linode_object_storage_key" "k" {
+  label = local.label
+
+  bucket_access {
+    bucket_name = var.backup.bucket
+    region      = var.region
+    permissions = "read_write"
+  }
 }

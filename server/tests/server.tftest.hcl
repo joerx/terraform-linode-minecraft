@@ -11,12 +11,11 @@ mock_provider "linode" {
       ipv4 = ["1.2.3.4"]
     }
   }
-}
 
-mock_provider "random" {
-  mock_resource "random_password" {
+  mock_resource "linode_object_storage_key" {
     defaults = {
-      result = "iAmGr00tP4ssw0rd"
+      access_key = "ossAccessKeyId"
+      secret_key = "ossSecretKey"
     }
   }
 }
@@ -30,17 +29,14 @@ variables {
   level_seed        = "124014738"
   stage             = "sbx"
   ingress           = ["1.2.3.4/32"]
-  region            = "eu-central-1"
+  region            = "eu-central"
 
   backup = {
-    bucket        = "a-bucket"
-    access_key_id = "access_key"
-    secret_key    = "s3cr3t"
-    endpoint      = "https://s3.example.com"
+    bucket = "a-bucket"
   }
 }
 
-run "setup_tests" {
+run "setup" {
   module {
     source = "./tests/setup"
   }
@@ -48,7 +44,7 @@ run "setup_tests" {
 
 run "download_url_for_1_19_3" {
   variables {
-    service = "mc-${run.setup_tests.service_label}"
+    name = run.setup.random_pet
   }
 
   assert {
@@ -59,7 +55,7 @@ run "download_url_for_1_19_3" {
 
 run "download_url_for_1_21_7" {
   variables {
-    service           = "mc-${run.setup_tests.service_label}"
+    name              = run.setup.random_pet
     minecraft_version = "1.21.7"
   }
 
@@ -71,7 +67,7 @@ run "download_url_for_1_21_7" {
 
 run "firewall_inbound_rules" {
   variables {
-    service = "mc-${run.setup_tests.service_label}"
+    name = run.setup.random_pet
   }
 
   assert {
@@ -102,7 +98,7 @@ run "firewall_inbound_rules" {
 
 run "linode_instance_created" {
   variables {
-    service = "mc-${run.setup_tests.service_label}"
+    name = run.setup.random_pet
   }
 
   assert {
@@ -111,7 +107,7 @@ run "linode_instance_created" {
   }
 
   assert {
-    condition     = linode_instance.mc.label == "${var.stage}-${var.service}"
+    condition     = startswith(linode_instance.mc.label, "${var.stage}-mc-${var.name}")
     error_message = "instance label does not match expected format"
   }
 
@@ -129,4 +125,74 @@ run "linode_instance_created" {
     condition     = linode_instance.mc.root_pass == output.root_password
     error_message = "instance root password does not match expected value"
   }
+}
+
+run "linode_instance_with_long_label" {
+  command = plan
+
+  variables {
+    name = "${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}"
+  }
+
+  expect_failures = [
+    var.name,
+  ]
+}
+
+run "linode_instance_with_long_prefix" {
+  command = plan
+
+  variables {
+    name   = run.setup.random_pet
+    prefix = "abc"
+  }
+
+  expect_failures = [
+    var.prefix,
+  ]
+}
+
+run "oss_credentials_created" {
+  variables {
+    name = run.setup.random_pet
+  }
+
+  assert {
+    condition     = anytrue([for b in linode_object_storage_key.k.bucket_access : b.bucket_name == var.backup.bucket])
+    error_message = "expected limited object storage key to be created"
+  }
+
+  assert {
+    condition     = linode_instance.mc.stackscript_data["OSS_ACCESS_KEY_ID"] == linode_object_storage_key.k.access_key
+    error_message = "OSS access key id not set correctly in stackscript data"
+  }
+
+  assert {
+    condition     = linode_instance.mc.stackscript_data["OSS_SECRET_ACCESS_KEY"] == linode_object_storage_key.k.secret_key
+    error_message = "OSS secret access key not set correctly in stackscript data"
+  }
+}
+
+run "oss_endpoint_set" {
+  variables {
+    name = run.setup.random_pet
+  }
+
+  assert {
+    condition     = linode_instance.mc.stackscript_data["OSS_ENDPOINT"] == "https://eu-central-1.linodeobjects.com"
+    error_message = "OSS endpoint not set correctly in stackscript data"
+  }
+}
+
+run "invalid_region" {
+  command = plan
+
+  variables {
+    name   = run.setup.random_pet
+    region = "invalid-region"
+  }
+
+  expect_failures = [
+    var.region,
+  ]
 }
