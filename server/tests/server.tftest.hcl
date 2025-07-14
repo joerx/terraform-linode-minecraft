@@ -131,7 +131,7 @@ run "linode_instance_with_long_label" {
   command = plan
 
   variables {
-    name = "${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}"
+    name = "${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}-${run.setup.random_pet}"
   }
 
   expect_failures = [
