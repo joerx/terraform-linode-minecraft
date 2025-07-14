@@ -9,6 +9,6 @@ terraform {
 
 resource "random_pet" "p" {}
 
-output "service_label" {
+output "random_pet" {
   value = random_pet.p.id
 }

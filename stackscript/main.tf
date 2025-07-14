@@ -7,6 +7,7 @@ locals {
 resource "random_string" "s" {
   length  = 3
   special = false
+  upper   = false
 }
 
 resource "linode_stackscript" "s" {

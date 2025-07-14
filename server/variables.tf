@@ -3,10 +3,31 @@ variable "stage" {
   type        = string
 }
 
+variable "name" {
+  description = "Unique name for the server instance, used in labels and tags"
+  type        = string
+
+  validation {
+    condition     = length(var.name) <= 40
+    error_message = "Name must be 40 characters or less"
+  }
+}
+
 variable "service" {
   description = "Service name, for generating labels and tags"
   type        = string
   default     = "minecraft"
+}
+
+variable "prefix" {
+  description = "Prefix to use for labels"
+  type        = string
+  default     = "mc"
+
+  validation {
+    condition     = length(var.prefix) <= 2
+    error_message = "Prefix must be 2 characters or less"
+  }
 }
 
 variable "ingress" {
@@ -22,6 +43,11 @@ variable "image" {
 variable "region" {
   description = "Region to deploy the instance to"
   type        = string
+
+  validation {
+    condition     = contains(keys(local.oss_endpoints), var.region)
+    error_message = "Unsuported region, valid values are: ${join(", ", keys(local.oss_endpoints))}"
+  }
 }
 
 variable "instance_type" {
@@ -54,10 +80,8 @@ variable "backup" {
   description = "Settings for world backup and restore"
 
   type = object({
-    bucket        = string
-    access_key_id = string
-    secret_key    = string
-    endpoint      = string
+    bucket   = string
+    endpoint = optional(string)
   })
 }
 
