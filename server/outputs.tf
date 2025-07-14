@@ -2,6 +2,11 @@ output "label" {
   value = linode_instance.mc.label
 }
 
+output "hostname" {
+  description = "Hostname part of the DNS record"
+  value       = local.hostname
+}
+
 output "public_ip" {
   value = local.public_ip
 }

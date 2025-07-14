@@ -1,6 +1,7 @@
 locals {
   label       = "${var.stage}-${var.prefix}-${var.name}-${random_string.s.result}"
   short_label = "${var.stage}-${var.prefix}-${substr(var.name, 0, 21)}-${random_string.s.result}"
+  hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
 
   public_ip    = tolist(linode_instance.mc.ipv4)[0]
@@ -76,7 +77,7 @@ resource "linode_instance" "mc" {
 
 resource "linode_domain_record" "n" {
   domain_id   = var.domain_id
-  name        = local.label
+  name        = local.hostname
   target      = local.public_ip
   record_type = "A"
 }
