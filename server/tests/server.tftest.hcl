@@ -49,7 +49,7 @@ run "download_url_for_1_19_3" {
   }
 
   assert {
-    condition     = linode_instance.mc.stackscript_data["MINECRAFT_DOWNLOAD_URL"] == "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar"
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "https://piston-data.mojang.com/v1/objects/c9df48efed58511cdd0213c56b9013a7b5c9ac1f/server.jar")])
     error_message = "incorrect download URL for Minecraft version 1.19.3"
   }
 }
@@ -61,7 +61,7 @@ run "download_url_for_1_21_7" {
   }
 
   assert {
-    condition     = linode_instance.mc.stackscript_data["MINECRAFT_DOWNLOAD_URL"] == "https://piston-data.mojang.com/v1/objects/05e4b48fbc01f0385adb74bcff9751d34552486c/server.jar"
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "https://piston-data.mojang.com/v1/objects/05e4b48fbc01f0385adb74bcff9751d34552486c/server.jar")])
     error_message = "incorrect download URL for Minecraft version 1.21.7"
   }
 }
@@ -164,12 +164,12 @@ run "oss_credentials_created" {
   }
 
   assert {
-    condition     = linode_instance.mc.stackscript_data["OSS_ACCESS_KEY_ID"] == linode_object_storage_key.k.access_key
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, linode_object_storage_key.k.access_key)])
     error_message = "OSS access key id not set correctly in stackscript data"
   }
 
   assert {
-    condition     = linode_instance.mc.stackscript_data["OSS_SECRET_ACCESS_KEY"] == linode_object_storage_key.k.secret_key
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, linode_object_storage_key.k.secret_key)])
     error_message = "OSS secret access key not set correctly in stackscript data"
   }
 }
@@ -180,7 +180,7 @@ run "oss_endpoint_set" {
   }
 
   assert {
-    condition     = linode_instance.mc.stackscript_data["OSS_ENDPOINT"] == "https://eu-central-1.linodeobjects.com"
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "https://eu-central-1.linodeobjects.com")])
     error_message = "OSS endpoint not set correctly in stackscript data"
   }
 }

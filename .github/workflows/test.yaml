@@ -10,10 +10,6 @@ jobs:
   terraform_test:
     name: Terraform Test
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [server, stackscript]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,6 +18,6 @@ jobs:
         # with:
         #   terraform_version: "1.11.1"
       - name: Terraform syntax & formatting checks
-        run: make check-fmt MODULE=${{ matrix.module }}
+        run: make check-fmt
       - name: Run tests
-        run: make test MODULE=${{ matrix.module }}
+        run: make test
