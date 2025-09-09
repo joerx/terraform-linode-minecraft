@@ -1,0 +1,53 @@
+#cloud-config
+hostname: ${HOSTNAME}
+create_hostname_file: true
+
+users:
+  - name: debian
+    ssh_authorized_keys:
+      - ${SSH_PUBLIC_KEY}
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+
+# This is executed before write_files while users is run later
+# We need the user to exist before we write files owned by them
+bootcmd:
+  - useradd --home-dir /opt/minecraft --shell /bin/bash --user-group --create-home minecraft
+
+write_files:
+  - path: /opt/minecraft/.aws/credentials
+    owner: minecraft:minecraft
+    permissions: '0600'
+    content: |
+      [default]
+      aws_access_key_id = ${OSS_ACCESS_KEY_ID}
+      aws_secret_access_key = ${OSS_SECRET_ACCESS_KEY}
+
+  - path: /opt/minecraft/.aws/config
+    owner: minecraft:minecraft
+    permissions: '0600'
+    content: |
+      [profile default]
+      region = ${REGION}
+      services = linode-oss
+
+      [services linode-oss]
+      s3 =
+        endpoint_url = https://${OSS_ENDPOINT}
+        addressing_style = path
+
+  - path: /etc/default/minecraft-server
+    owner: root:root
+    permissions: '0644'
+    content: |
+      MINECRAFT_DOWNLOAD_URL=${MINECRAFT_DOWNLOAD_URL}
+      MAX_PLAYERS=20
+      LEVEL_NAME=${LEVEL_NAME}
+      LEVEL_SEED=${LEVEL_SEED}  
+      GAME_MODE=${GAME_MODE}
+      DIFFICULTY=${DIFFICULTY}
+      BACKUP_BUCKET=${BACKUP_BUCKET}
+      BACKUP_SCHEDULE="0 2 * * *"
+      MCRCON_VERSION=0.7.2
+  

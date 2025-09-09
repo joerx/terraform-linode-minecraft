@@ -3,8 +3,7 @@ locals {
   short_label = "${var.stage}-${var.prefix}-${substr(var.name, 0, 21)}-${random_string.s.result}"
   hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
-
-  public_ip = tolist(linode_instance.mc.ipv4)[0]
+  public_ip   = tolist(linode_instance.mc.ipv4)[0]
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -51,6 +50,36 @@ resource "linode_firewall_device" "d" {
   entity_id   = linode_instance.mc.id
 }
 
+data "cloudinit_config" "init" {
+  gzip          = false
+  base64_encode = true
+
+  part {
+    content_type = "text/cloud-config"
+    filename     = "cloud-config.yaml"
+    content = templatefile("${path.module}/init/cloud-init.yaml", {
+      HOSTNAME               = local.label
+      MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
+      OSS_ACCESS_KEY_ID      = linode_object_storage_key.k.access_key
+      OSS_SECRET_ACCESS_KEY  = linode_object_storage_key.k.secret_key
+      OSS_ENDPOINT           = var.backup.endpoint
+      LEVEL_SEED             = var.level_seed == null ? "" : var.level_seed
+      LEVEL_NAME             = "world"
+      GAME_MODE              = var.game_mode
+      DIFFICULTY             = var.difficulty
+      REGION                 = var.region
+      BACKUP_BUCKET          = var.backup.bucket
+      SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
+    })
+  }
+
+  part {
+    content_type = "text/x-shellscript"
+    filename     = "setup-minecraft.sh"
+    content      = file("${path.module}/init/setup-minecraft.sh")
+  }
+}
+
 resource "linode_instance" "mc" {
   label           = local.label
   tags            = local.tags
@@ -60,17 +89,8 @@ resource "linode_instance" "mc" {
   root_pass       = random_password.root_pw.result
   authorized_keys = [chomp(tls_private_key.ssh_key.public_key_openssh)]
 
-  stackscript_id = var.stackscript_id
-  stackscript_data = {
-    "HOSTNAME"               = local.label
-    "GAME_MODE"              = var.game_mode
-    "LEVEL_SEED"             = var.level_seed
-    "DIFFICULTY"             = var.difficulty
-    "MINECRAFT_DOWNLOAD_URL" = local.minecraft_download_urls[var.minecraft_version]
-    "OSS_BUCKET"             = var.backup.bucket
-    "OSS_ACCESS_KEY_ID"      = linode_object_storage_key.k.access_key
-    "OSS_SECRET_ACCESS_KEY"  = linode_object_storage_key.k.secret_key
-    "OSS_ENDPOINT"           = var.backup.endpoint
+  metadata {
+    user_data = data.cloudinit_config.init.rendered
   }
 }
 
