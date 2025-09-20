@@ -9,6 +9,10 @@ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip
 unzip -q awscliv2.zip
 ./aws/install
 
+# Corretto JDK
+wget -O - https://apt.corretto.aws/corretto.key | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg && \
+echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list
+apt-get update && apt-get install -y java-21-amazon-corretto-jdk
 
 # Download mcrcon
 >&2 echo "Downloading mcrcon version ${MCRCON_VERSION}"

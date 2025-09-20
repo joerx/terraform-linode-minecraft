@@ -28,3 +28,9 @@ variable "enabled" {
   type        = bool
   default     = false
 }
+
+variable "ingress" {
+  type        = list(string)
+  description = "List of CIDR blocks to allow SSH access"
+  default     = ["127.0.0.1/24"]
+}

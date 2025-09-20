@@ -25,7 +25,7 @@ module "server" {
   game_mode         = "creative"
   difficulty        = "peaceful"
 
-  ingress = ["127.0.0.1/32"]
+  ingress = var.ingress
 
   domain_id = data.linode_domain.d.id
   region    = local.region
