@@ -22,7 +22,6 @@ mock_provider "linode" {
 
 variables {
   domain_id         = "1234567890"
-  stackscript_id    = "0987654321"
   minecraft_version = "1.19.3"
   game_mode         = "creative"
   difficulty        = "peaceful"

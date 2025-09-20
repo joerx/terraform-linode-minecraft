@@ -10,10 +10,25 @@ users:
     groups: sudo
     shell: /bin/bash
 
-# This is executed before write_files while users is run later
+# This is executed before `write_files` while `users` is run later
 # We need the user to exist before we write files owned by them
 bootcmd:
   - useradd --home-dir /opt/minecraft --shell /bin/bash --user-group --create-home minecraft
+
+apt:
+  sources:
+    corretto:
+      keyid: "B04F24E3"
+      keyserver: https://apt.corretto.aws/corretto.key
+      source: deb [signed-by=$KEY_FILE] https://apt.corretto.aws stable main
+
+package_update: true
+package_upgrade: true
+packages:
+  - pwgen
+  - gnupg2
+  - unzip
+  - java-21-amazon-corretto-jdk
 
 write_files:
   - path: /opt/minecraft/.aws/credentials

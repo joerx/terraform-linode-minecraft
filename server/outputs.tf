@@ -1,10 +1,10 @@
 output "label" {
-  value = linode_instance.mc.label
+  value = var.enabled ? linode_instance.mc[0].label : null
 }
 
 output "hostname" {
   description = "Hostname part of the DNS record"
-  value       = local.hostname
+  value       = var.enabled ? local.hostname : null
 }
 
 output "public_ip" {
@@ -27,4 +27,8 @@ output "minecraft_port" {
 
 output "ssh_port" {
   value = local.ssh_port
+}
+
+output "cloud_config" {
+  value = data.cloudinit_config.init.rendered
 }
