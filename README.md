@@ -51,6 +51,14 @@ cd server/example
 terraform apply -var-file dev.tfvars
 ```
 
+- To connect:
+
+```sh
+PUBLIC_IP=$(terraform output -raw public_ip)
+terraform output -raw private_key_pem | ssh-add -
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" debian@$PUBLIC_IP
+```
+
 ### Local Server
 
 - On a linux host, a local development server based on [`libvirt`](https://libvirt.org/) is available

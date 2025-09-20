@@ -76,22 +76,25 @@ data "cloudinit_config" "init" {
     })
   }
 
-  dynamic "part" {
-    for_each = var.gcloud != null ? [1] : []
-    content {
-      content_type = "text/cloud-config"
-      filename     = "alloy.yaml"
-      merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
-      content = templatefile("${path.module}/init/alloy.yaml", {
-        GCLOUD_SCRAPE_INTERVAL    = var.gcloud.scrape_interval
-        GCLOUD_HOSTED_METRICS_URL = var.gcloud.hosted_metrics_url
-        GCLOUD_HOSTED_METRICS_ID  = var.gcloud.hosted_metrics_id
-        GCLOUD_HOSTED_LOGS_URL    = var.gcloud.hosted_logs_url
-        GCLOUD_HOSTED_LOGS_ID     = var.gcloud.hosted_logs_id
-        GCLOUD_RW_API_KEY         = var.gcloud.rw_api_key
-      })
-    }
-  }
+  # Adding this we will run into the maximum user-data size of 16kB. We are therefore
+  # plannig to refactor our delivery pipeline to use Packer and disable this for now.
+
+  # dynamic "part" {
+  #   for_each = var.gcloud != null ? [1] : []
+  #   content {
+  #     content_type = "text/cloud-config"
+  #     filename     = "alloy.yaml"
+  #     merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
+  #     content = templatefile("${path.module}/init/alloy.yaml", {
+  #       GCLOUD_SCRAPE_INTERVAL    = var.gcloud.scrape_interval
+  #       GCLOUD_HOSTED_METRICS_URL = var.gcloud.hosted_metrics_url
+  #       GCLOUD_HOSTED_METRICS_ID  = var.gcloud.hosted_metrics_id
+  #       GCLOUD_HOSTED_LOGS_URL    = var.gcloud.hosted_logs_url
+  #       GCLOUD_HOSTED_LOGS_ID     = var.gcloud.hosted_logs_id
+  #       GCLOUD_RW_API_KEY         = var.gcloud.rw_api_key
+  #     })
+  #   }
+  # }
 
   part {
     content_type = "text/x-shellscript"
