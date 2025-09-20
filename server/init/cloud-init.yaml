@@ -10,10 +10,17 @@ users:
     groups: sudo
     shell: /bin/bash
 
-# This is executed before write_files while users is run later
+# This is executed before `write_files` while `users` is run later
 # We need the user to exist before we write files owned by them
 bootcmd:
   - useradd --home-dir /opt/minecraft --shell /bin/bash --user-group --create-home minecraft
+
+package_update: true
+package_upgrade: true
+packages:
+  - pwgen
+  - gnupg2
+  - unzip
 
 write_files:
   - path: /opt/minecraft/.aws/credentials

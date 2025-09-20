@@ -4,46 +4,15 @@ set -e -o pipefail
 
 . /etc/default/minecraft-server
 
-cat <<- EOF > /etc/minecraft-setup.log 
-MINECRAFT_DOWNLOAD_URL=${MINECRAFT_DOWNLOAD_URL}
-MAX_PLAYERS=${MAX_PLAYERS}
-LEVEL_NAME=${LEVEL_NAME}
-LEVEL_SEED=${LEVEL_SEED}
-GAME_MODE=${GAME_MODE}
-DIFFICULTY=${DIFFICULTY}
-BACKUP_BUCKET=${BACKUP_BUCKET}
-BACKUP_SCHEDULE=${BACKUP_SCHEDULED}
-MCRCON_VERSION=${MCRCON_VERSION}
-EOF
+# AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -q awscliv2.zip
+./aws/install
 
-HOSTNAME=$(hostname)
-
-
-# Update and upgrade system packages
-export DEBIAN_FRONTEND=noninteractive
-
-apt-get update
-apt-get \
-  -o Dpkg::Options::=--force-confold \
-  -o Dpkg::Options::=--force-confdef \
-  -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
-  dist-upgrade
-
-apt-get -y install pwgen gnupg2
-
-
-# Install Java (Amazon Corretto 21)
+# Corretto JDK
 wget -O - https://apt.corretto.aws/corretto.key | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg && \
 echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list
 apt-get update && apt-get install -y java-21-amazon-corretto-jdk
-
-
-# AWS CLI
-apt-get -y install unzip
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-./aws/install
-
 
 # Download mcrcon
 >&2 echo "Downloading mcrcon version ${MCRCON_VERSION}"
@@ -88,7 +57,7 @@ EOF
 
 
 # Write default server.properties
-cat <<- EOF > /opt/minecraft/server/server.properties
+cat <<- EOF > /opt/minecraft/server/server.properties.template
 #Minecraft server properties
 #(File modification date and time)
 enable-jmx-monitoring=false

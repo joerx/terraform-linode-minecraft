@@ -56,11 +56,6 @@ variable "domain_id" {
   type        = string
 }
 
-variable "stackscript_id" {
-  description = "ID of an existing Linode stack script to set up the server"
-  type        = string
-}
-
 variable "minecraft_version" {
   description = "Version of Minecraft to use for default download URL"
   default     = "1.19.3"
@@ -80,7 +75,7 @@ variable "backup" {
   })
 }
 
-variable "server_enabled" {
+variable "enabled" {
   description = "If false, instance will be terminated"
   type        = bool
   default     = true
@@ -97,3 +92,17 @@ variable "level_seed" {
   type        = string
   default     = null
 }
+
+# variable "gcloud" {
+#   description = "Settings for Google Cloud hosted metrics and logs"
+#   default     = null
+
+#   type = object({
+#     hosted_metrics_id  = string
+#     hosted_logs_id     = string
+#     rw_api_key         = string
+#     scrape_interval    = optional(string, "60s")
+#     hosted_metrics_url = optional(string, "https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push")
+#     hosted_logs_url    = optional(string, "https://logs-prod-012.grafana.net/loki/api/v1/push")
+#   })
+# }

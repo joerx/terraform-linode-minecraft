@@ -22,7 +22,6 @@ mock_provider "linode" {
 
 variables {
   domain_id         = "1234567890"
-  stackscript_id    = "0987654321"
   minecraft_version = "1.19.3"
   game_mode         = "creative"
   difficulty        = "peaceful"
@@ -72,27 +71,27 @@ run "firewall_inbound_rules" {
   }
 
   assert {
-    condition     = length(linode_firewall.fw.inbound) == 2
+    condition     = length(linode_firewall.fw[0].inbound) == 2
     error_message = "expected 2 inbound rules in the firewall"
   }
 
   assert {
-    condition     = linode_firewall.fw.inbound[0].ports == "25565"
+    condition     = linode_firewall.fw[0].inbound[0].ports == "25565"
     error_message = "first inbound rule should be for Minecraft"
   }
 
   assert {
-    condition     = linode_firewall.fw.inbound[0].ipv4 == var.ingress
+    condition     = linode_firewall.fw[0].inbound[0].ipv4 == var.ingress
     error_message = "second inbound rule should allow ingress IPs"
   }
 
   assert {
-    condition     = linode_firewall.fw.inbound[1].ports == "22"
+    condition     = linode_firewall.fw[0].inbound[1].ports == "22"
     error_message = "second inbound rule should be for SSH"
   }
 
   assert {
-    condition     = linode_firewall.fw.inbound[1].ipv4 == var.ingress
+    condition     = linode_firewall.fw[0].inbound[1].ipv4 == var.ingress
     error_message = "second inbound rule should allow ingress IPs"
   }
 }
@@ -103,27 +102,27 @@ run "linode_instance_created" {
   }
 
   assert {
-    condition     = linode_instance.mc != null
-    error_message = "expected Linode instance to be created"
+    condition     = length(linode_instance.mc) == 1
+    error_message = "expected exactly one Linode instance to be created"
   }
 
   assert {
-    condition     = startswith(linode_instance.mc.label, "${var.stage}-mc-${var.name}")
+    condition     = startswith(linode_instance.mc[0].label, "${var.stage}-mc-${var.name}")
     error_message = "instance label does not match expected format"
   }
 
   assert {
-    condition     = linode_instance.mc.type == var.instance_type
+    condition     = linode_instance.mc[0].type == var.instance_type
     error_message = "instance type does not match expected value"
   }
 
   assert {
-    condition     = linode_instance.mc.region == var.region
+    condition     = linode_instance.mc[0].region == var.region
     error_message = "instance region does not match expected value"
   }
 
   assert {
-    condition     = linode_instance.mc.root_pass == output.root_password
+    condition     = linode_instance.mc[0].root_pass == output.root_password
     error_message = "instance root password does not match expected value"
   }
 }

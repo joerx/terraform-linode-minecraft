@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Helper script to run a local VM with libvirt and qemu to test the cloud-init scripts needed to set up a minecraft server.
-# 
+#
 # Prerequisites:
-# - On Fedora: `sudo dnf install libvirt qemu-kvm virt-install genisoimage cloud-utils-write-mime-multipart`
+# - On Fedora: `sudo dnf install libvirt qemu-kvm virt-install genisoimage terraform`
 # - Make sure libvirt is using qemu:///system
 # - Add your user to the libvirt group: `sudo usermod -aG libvirt $USER`
 # - Home directory should be world-readable for qemu to access the disk images
@@ -23,23 +23,13 @@ IMG_NAME=$(basename $IMG_DOWNLOAD_URL)
 NAME=minecraft-server
 VMDIR=.vms/$NAME
 
-BACKUP_BUCKET="dev-minecraft-backup-0ffl"
-SSH_PUBLIC_KEY=$(cat ~/.ssh/id_ed25519.pub || cat ~/.ssh/id_rsa.pub)
-MINECRAFT_DOWNLOAD_URL="https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar" # 1.21.8
-REGION=eu-central
-OSS_ENDPOINT=eu-central-1.linodeobjects.com
-
-if [[ ! -f .env ]]; then
-  >&2 echo "Please create a .env file with the following contents:"
-  >&2 echo "OSS_ACCESS_KEY_ID=..."
-  >&2 echo "OSS_SECRET_ACCESS_KEY=..."
-  exit 1
-fi
-
-. .env
-
-if [[ -z "$OSS_ACCESS_KEY_ID" || -z "$OSS_SECRET_ACCESS_KEY" ]]; then
-  >&2 echo "Please set OSS_ACCESS_KEY_ID and OSS_SECRET_ACCESS_KEY in .env"
+if [[ ! -f dev.tfvars ]]; then
+  >&2 echo "Please create a file called 'dev.tfvars' with the following contents:"
+  >&2 echo "gcloud_rw_api_key=..."
+  >&2 echo "gcloud_hosted_logs_id=..."
+  >&2 echo "gcloud_hosted_metrics_id=..."
+  >&2 echo "bucket_name=..."
+  >&2 echo "s3_endpoint=..."
   exit 1
 fi
 
@@ -75,26 +65,9 @@ create_server() {
 
   echo "instance-id: $NAME" > $VMDIR/meta-data
   echo "local-hostname: $NAME" >> $VMDIR/meta-data
-
-  cat init/cloud-init.yaml | \
-    sed "s|\${SSH_PUBLIC_KEY}|$SSH_PUBLIC_KEY|g" | \
-    sed "s|\${REGION}|$REGION|g" | \
-    sed "s|\${HOSTNAME}|$NAME|g" | \
-    sed "s|\${MINECRAFT_DOWNLOAD_URL}|$MINECRAFT_DOWNLOAD_URL|g" | \
-    sed "s|\${MAX_PLAYERS}|20|g" | \
-    sed "s|\${LEVEL_NAME}|world|g" | \
-    sed "s|\${LEVEL_SEED}||g" | \
-    sed "s|\${GAME_MODE}|creative|g" | \
-    sed "s|\${DIFFICULTY}|peaceful|g" | \
-    sed "s|\${BACKUP_BUCKET}|$BACKUP_BUCKET|g" | \
-    sed "s|\${OSS_ENDPOINT}|$OSS_ENDPOINT|g" | \
-    sed "s|\${OSS_ACCESS_KEY_ID}|$OSS_ACCESS_KEY_ID|g" | \
-    sed "s|\${OSS_SECRET_ACCESS_KEY}|$OSS_SECRET_ACCESS_KEY|g" \
-    > $VMDIR/cloud-init.yaml
-
-  write-mime-multipart --output=$VMDIR/user-data \
-    $VMDIR/cloud-init.yaml:text/cloud-config \
-    init/setup-minecraft.sh:text/x-shellscript
+  
+  # Use terraform to generate the cloud-init config with all variables replaced
+  terraform apply -auto-approve -var-file dev.tfvars && terraform output -raw cloud_config | base64 -d > $VMDIR/user-data
 
   # Generate file system from base image
   qemu-img create -b $IMG_DIR/$IMG_NAME -f qcow2 -F qcow2 $VMDIR/$NAME.qcow2 10G
@@ -113,7 +86,6 @@ create_server() {
       --os-variant=$OS_VARIANT \
       --memorybacking access.mode=shared \
       --noautoconsole
-      # --filesystem source=$PWD,target=code,accessmode=passthrough,driver.type=virtiofs \
 }
 
 destroy_server() {
@@ -123,8 +95,31 @@ destroy_server() {
 }
 
 get_login() {
-  virsh domifaddr $NAME
-  # echo "ssh debian@<IP_ADDRESS>"
+
+  local max=10
+  local cmd
+  local ip_addr
+  local mac_addr
+
+  for ((i=1; i<=$max; i++)); do
+    mac_addr=$(virsh dumpxml $NAME | grep "mac address" | sed "s/.*'\(.*\)'.*/\1/")
+
+    set +e
+    ip_addr=$(arp -n | grep "$mac_addr" | awk '{print $1}')
+    set -e
+
+    if [[ ! -z "$ip_addr" ]]; then
+      ssh-add -D
+      terraform output -raw private_key_pem | ssh-add -
+      cmd="ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" debian@$ip_addr"
+      $cmd
+      exit 0
+    fi
+
+    sleep 1s
+  done
+
+  >&2 echo "Failed to get IP for '$NAME' after ${max}s, is the VM running?"
 }
 
 
@@ -143,7 +138,3 @@ case "$1" in
     exit 1
     ;;
 esac
-
-# To log in:
-# virsh domifaddr minecraft-server
-# ssh debian@<IP_ADDRESS>

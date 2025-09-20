@@ -3,7 +3,7 @@ locals {
   short_label = "${var.stage}-${var.prefix}-${substr(var.name, 0, 21)}-${random_string.s.result}"
   hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
-  public_ip   = tolist(linode_instance.mc.ipv4)[0]
+  public_ip   = var.enabled ? tolist(linode_instance.mc[0].ipv4)[0] : null
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -22,6 +22,7 @@ resource "random_password" "root_pw" {
 }
 
 resource "linode_firewall" "fw" {
+  count = var.enabled ? 1 : 0
   label = local.short_label
   tags  = local.tags
 
@@ -46,8 +47,9 @@ resource "linode_firewall" "fw" {
 }
 
 resource "linode_firewall_device" "d" {
-  firewall_id = linode_firewall.fw.id
-  entity_id   = linode_instance.mc.id
+  count       = var.enabled ? 1 : 0
+  firewall_id = linode_firewall.fw[count.index].id
+  entity_id   = linode_instance.mc[count.index].id
 }
 
 data "cloudinit_config" "init" {
@@ -57,6 +59,7 @@ data "cloudinit_config" "init" {
   part {
     content_type = "text/cloud-config"
     filename     = "cloud-config.yaml"
+    merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
     content = templatefile("${path.module}/init/cloud-init.yaml", {
       HOSTNAME               = local.label
       MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
@@ -73,6 +76,26 @@ data "cloudinit_config" "init" {
     })
   }
 
+  # Adding this we will run into the maximum user-data size of 16kB. We are therefore
+  # plannig to refactor our delivery pipeline to use Packer and disable this for now.
+
+  # dynamic "part" {
+  #   for_each = var.gcloud != null ? [1] : []
+  #   content {
+  #     content_type = "text/cloud-config"
+  #     filename     = "alloy.yaml"
+  #     merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
+  #     content = templatefile("${path.module}/init/alloy.yaml", {
+  #       GCLOUD_SCRAPE_INTERVAL    = var.gcloud.scrape_interval
+  #       GCLOUD_HOSTED_METRICS_URL = var.gcloud.hosted_metrics_url
+  #       GCLOUD_HOSTED_METRICS_ID  = var.gcloud.hosted_metrics_id
+  #       GCLOUD_HOSTED_LOGS_URL    = var.gcloud.hosted_logs_url
+  #       GCLOUD_HOSTED_LOGS_ID     = var.gcloud.hosted_logs_id
+  #       GCLOUD_RW_API_KEY         = var.gcloud.rw_api_key
+  #     })
+  #   }
+  # }
+
   part {
     content_type = "text/x-shellscript"
     filename     = "setup-minecraft.sh"
@@ -81,6 +104,7 @@ data "cloudinit_config" "init" {
 }
 
 resource "linode_instance" "mc" {
+  count           = var.enabled ? 1 : 0
   label           = local.label
   tags            = local.tags
   image           = var.image
@@ -95,6 +119,7 @@ resource "linode_instance" "mc" {
 }
 
 resource "linode_domain_record" "n" {
+  count       = var.enabled ? 1 : 0
   domain_id   = var.domain_id
   name        = local.hostname
   target      = local.public_ip
