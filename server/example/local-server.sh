@@ -10,15 +10,9 @@
 
 set -e -o pipefail
 
-OS_VARIANT=debian13
-
-# IMG_ARCH=$(uname -m)
+OS_VARIANT=ubuntujammy
 IMG_ARCH="amd64"
-IMG_VARIANT=debian-13-generic
-IMG_DOWNLOAD_URL="https://cloud.debian.org/images/cloud/trixie/latest/${IMG_VARIANT}-${IMG_ARCH}.qcow2"
-IMG_DIR=$HOME/.local/share/images
-
-IMG_NAME=$(basename $IMG_DOWNLOAD_URL)
+IMG_PATH="../../packer/output/qemu-ubuntu/ubuntu-jammy.img"
 
 NAME=minecraft-server
 VMDIR=.vms/$NAME
@@ -34,19 +28,6 @@ if [[ ! -f dev.tfvars ]]; then
 fi
 
 create_server() {
-  # Download image if not already present
-  if [[ ! -d $IMG_DIR ]]; then
-    mkdir -p $IMG_DIR
-  fi
-
-  if [[ ! -f $IMG_DIR/$IMG_NAME ]]; then
-    >&2 echo "Downloading base image from $IMG_DOWNLOAD_URL"
-    curl -Lf $IMG_DOWNLOAD_URL -o images/$IMG_NAME
-  else
-    >&2 echo "Image already exists, skipping download"
-  fi
-
-
   # Find users SSH key to add to authorized_keys later
   if [[ -f ~/.ssh/id_ed25519.pub ]]; then
     SSH_RSA=$(cat ~/.ssh/id_ed25519.pub)
@@ -57,23 +38,21 @@ create_server() {
     exit 1
   fi
 
-
   # Generate meta-data and user-data files
-  # NB: We need multi-part MIME to inject user scripts on top of the default one
-  # See https://cloudinit.readthedocs.io/en/latest/explanation/format.html#helper-subcommand-to-generate-mime-messages
   mkdir -p $VMDIR
 
   echo "instance-id: $NAME" > $VMDIR/meta-data
   echo "local-hostname: $NAME" >> $VMDIR/meta-data
   
-  # Use terraform to generate the cloud-init config with all variables replaced
+  # Use terraform to generate the same cloud-init config as a live server would use
   terraform apply -auto-approve -var-file dev.tfvars && terraform output -raw cloud_config | base64 -d > $VMDIR/user-data
-
-  # Generate file system from base image
-  qemu-img create -b $IMG_DIR/$IMG_NAME -f qcow2 -F qcow2 $VMDIR/$NAME.qcow2 10G
 
   # Generate ISO image for cloudinit
   genisoimage -output $VMDIR/cidata.iso -V cidata -r -J $VMDIR/user-data $VMDIR/meta-data
+
+  # Generate file system from base image
+  local backing_file=$(realpath $IMG_PATH)
+  qemu-img create -b $backing_file -f qcow2 -F qcow2 $VMDIR/$NAME.img 10G
 
   # Virt-install
   virt-install \
@@ -81,7 +60,7 @@ create_server() {
       --ram 2048 \
       --vcpus 2 \
       --import \
-      --disk path=$VMDIR/$NAME.qcow2,format=qcow2 \
+      --disk path=$VMDIR/$NAME.img,format=qcow2 \
       --disk path=$VMDIR/cidata.iso,device=cdrom \
       --os-variant=$OS_VARIANT \
       --memorybacking access.mode=shared \
