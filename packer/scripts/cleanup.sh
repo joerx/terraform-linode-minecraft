@@ -1,7 +1,7 @@
 #!/bin/bash -eux
 
-echo "==> reset cloud-init"
-cloud-init clean --logs
+# echo "==> reset cloud-init"
+# cloud-init clean --logs
 
 echo "==> remove SSH keys used for building"
 rm -f /home/ubuntu/.ssh/authorized_keys

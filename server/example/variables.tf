@@ -1,17 +1,17 @@
-# variable "gcloud_rw_api_key" {
-#   type        = string
-#   description = "Google Cloud Read/Write API Key for Alloy"
-# }
+variable "gcloud_rw_api_key" {
+  type        = string
+  description = "Google Cloud Read/Write API Key for Alloy"
+}
 
-# variable "gcloud_hosted_logs_id" {
-#   type        = string
-#   description = "Google Cloud Hosted Logs ID for Alloy"
-# }
+variable "gcloud_hosted_logs_id" {
+  type        = string
+  description = "Google Cloud Hosted Logs ID for Alloy"
+}
 
-# variable "gcloud_hosted_metrics_id" {
-#   type        = string
-#   description = "Google Cloud Hosted Metrics ID for Alloy"
-# }
+variable "gcloud_hosted_metrics_id" {
+  type        = string
+  description = "Google Cloud Hosted Metrics ID for Alloy"
+}
 
 variable "bucket_name" {
   type        = string

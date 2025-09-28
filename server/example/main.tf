@@ -35,9 +35,9 @@ module "server" {
     endpoint = var.s3_endpoint
   }
 
-  # gcloud = {
-  #   rw_api_key        = var.gcloud_rw_api_key
-  #   hosted_logs_id    = var.gcloud_hosted_logs_id
-  #   hosted_metrics_id = var.gcloud_hosted_metrics_id
-  # }
+  gcloud = {
+    rw_api_key        = var.gcloud_rw_api_key
+    hosted_logs_id    = var.gcloud_hosted_logs_id
+    hosted_metrics_id = var.gcloud_hosted_metrics_id
+  }
 }
