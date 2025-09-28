@@ -12,10 +12,9 @@ set -e -o pipefail
 
 OS_VARIANT=ubuntujammy
 IMG_ARCH="amd64"
-IMG_PATH="../../packer/output/qemu-ubuntu/ubuntu-jammy.img"
-
-NAME=minecraft-server
+NAME=local-mc
 VMDIR=.vms/$NAME
+
 
 if [[ ! -f dev.tfvars ]]; then
   >&2 echo "Please create a file called 'dev.tfvars' with the following contents:"
@@ -27,7 +26,11 @@ if [[ ! -f dev.tfvars ]]; then
   exit 1
 fi
 
+
 create_server() {
+  local IMG_PATH=$(realpath ${1:-"../packer/output/qemu-ubuntu/ubuntu-jammy.img"})
+  echo "Using base image: $IMG_PATH" >&2
+
   # Find users SSH key to add to authorized_keys later
   if [[ -f ~/.ssh/id_ed25519.pub ]]; then
     SSH_RSA=$(cat ~/.ssh/id_ed25519.pub)
@@ -45,14 +48,14 @@ create_server() {
   echo "local-hostname: $NAME" >> $VMDIR/meta-data
   
   # Use terraform to generate the same cloud-init config as a live server would use
+  terraform init
   terraform apply -auto-approve -var-file dev.tfvars && terraform output -raw cloud_config | base64 -d > $VMDIR/user-data
 
   # Generate ISO image for cloudinit
   genisoimage -output $VMDIR/cidata.iso -V cidata -r -J $VMDIR/user-data $VMDIR/meta-data
 
   # Generate file system from base image
-  local backing_file=$(realpath $IMG_PATH)
-  qemu-img create -b $backing_file -f qcow2 -F qcow2 $VMDIR/$NAME.img 10G
+  qemu-img create -b $IMG_PATH -f qcow2 -F qcow2 $VMDIR/$NAME.img 10G
 
   # Virt-install
   virt-install \
@@ -101,15 +104,15 @@ get_login() {
   >&2 echo "Failed to get IP for '$NAME' after ${max}s, is the VM running?"
 }
 
-
 case "$1" in
   create)
-    create_server
+    shift
+    create_server $@
     ;;
   destroy)
     destroy_server
     ;;
-  login)
+  login|ssh)
     get_login
     ;;
   *)

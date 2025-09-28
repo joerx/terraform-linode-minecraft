@@ -34,3 +34,9 @@ variable "ingress" {
   description = "List of CIDR blocks to allow SSH access"
   default     = ["127.0.0.1/24"]
 }
+
+variable "name" {
+  type        = string
+  description = "Name of the server"
+  default     = null
+}

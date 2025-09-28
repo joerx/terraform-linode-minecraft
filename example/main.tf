@@ -2,12 +2,13 @@ locals {
   stage  = "dev"
   region = "eu-central"
   domain = "${local.region}.${local.stage}.cloudcraft.yodo.dev"
-  name   = random_pet.name.id
+  name   = var.name != null ? var.name : "local-mc-${random_string.suffix[0].id}"
 }
 
-resource "random_pet" "name" {
-  length    = 2
-  separator = "-"
+resource "random_string" "suffix" {
+  count  = var.name == null ? 1 : 0
+  length = 2
+  upper  = false
 }
 
 data "linode_domain" "d" {
@@ -15,7 +16,7 @@ data "linode_domain" "d" {
 }
 
 module "server" {
-  source = "./.."
+  source = "../server"
 
   enabled = var.enabled
   name    = local.name

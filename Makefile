@@ -1,5 +1,4 @@
-MODULE ?= server
-PACKAGE_NAME ?= $(shell basename $(CURDIR))-$(MODULE)
+PACKAGE_NAME ?= $(shell basename $(CURDIR))-server
 COMMIT ?= $(shell git rev-parse --short HEAD)
 VERSION ?= v0.1.0-$(COMMIT)
 
@@ -11,7 +10,7 @@ default: test
 out/$(PACKAGE_FILE):
 	mkdir -p out
 	tar -czf out/$(PACKAGE_FILE) \
-		-C $(MODULE) \
+		-C server \
 		--exclude out \
 		--exclude Makefile \
 		--exclude .terraform \
@@ -33,15 +32,31 @@ publish: out/$(PACKAGE_FILE)
 .PHONY: clean
 clean:
 	rm -rf out
+	rm -rf packer/output
 
 .PHONY: test
 test:
-	terraform -chdir=$(MODULE) init -upgrade
-	terraform -chdir=$(MODULE) test
+	terraform -chdir=server init -upgrade
+	terraform -chdir=server test
 
 .PHONY: check-fmt
 check-fmt:
-	find $(MODULE) -type f -name '*.tf' -or -name '*.tfvars' -or -name '*.tftest.hcl' | xargs -n1 terraform fmt -check -diff
+	cd server && terraform fmt -check -diff .
+	cd example && terraform fmt -check -diff .
+	cd packer && packer fmt -check -diff .
 
+.PHONY: fmt
+fmt:
+	cd server && terraform fmt .
+	cd example && terraform fmt .
+	cd packer && packer fmt .
+
+.PHONY: release
 release:
 	gh release create $(VERSION) --title "Release $(VERSION)" --target main --generate-notes
+
+.PHONY: packer-build
+packer-build: packer/output/qemu-ubuntu/ubuntu-jammy.img
+
+packer/output/qemu-ubuntu/ubuntu-jammy.img:
+	PACKER_LOG=1 cd packer && packer build qemu-ubuntu.pkr.hcl

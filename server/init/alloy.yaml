@@ -11,5 +11,9 @@ write_files:
       Environment="GCLOUD_HOSTED_METRICS_URL=${GCLOUD_HOSTED_METRICS_URL}"
       Environment="GCLOUD_HOSTED_METRICS_ID=${GCLOUD_HOSTED_METRICS_ID}"
 
+# Caveat: 
+# `runcmd` runs rather late in the cloud-init process, so early boot messages may not be captured
+# An alternative would be to use `bootcmd`, but that runs before `write_files` is executed
+# To verify the exact boot order, see /etc/cloud/cloud.cfg on the target system
 runcmd:
   - systemctl enable alloy.service --now
