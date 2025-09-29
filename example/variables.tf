@@ -40,3 +40,8 @@ variable "name" {
   description = "Name of the server"
   default     = null
 }
+
+variable "image" {
+  type        = string
+  description = "Image to use for the instance"
+}

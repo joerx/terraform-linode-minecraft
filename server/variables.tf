@@ -106,3 +106,8 @@ variable "gcloud" {
     hosted_logs_url    = optional(string, "https://logs-prod-012.grafana.net/loki/api/v1/push")
   })
 }
+
+variable "ssh_user" {
+  description = "SSH user to create and use for login"
+  default     = "warden"
+}

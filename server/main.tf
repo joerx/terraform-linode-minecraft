@@ -74,6 +74,7 @@ data "cloudinit_config" "init" {
       REGION                 = var.region
       BACKUP_BUCKET          = var.backup.bucket
       SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
+      SSH_USER               = var.ssh_user
     })
   }
 
@@ -106,13 +107,15 @@ data "cloudinit_config" "init" {
 }
 
 resource "linode_instance" "mc" {
-  count           = var.enabled ? 1 : 0
-  label           = local.label
-  tags            = local.tags
-  image           = var.image
-  region          = var.region
-  type            = var.instance_type
-  root_pass       = random_password.root_pw.result
+  count     = var.enabled ? 1 : 0
+  label     = local.label
+  tags      = local.tags
+  image     = var.image
+  region    = var.region
+  type      = var.instance_type
+  root_pass = random_password.root_pw.result
+
+  # authorized_users = ["warden"]
   authorized_keys = [chomp(tls_private_key.ssh_key.public_key_openssh)]
 
   metadata {

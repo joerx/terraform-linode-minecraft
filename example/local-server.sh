@@ -28,7 +28,13 @@ fi
 
 
 create_server() {
-  local IMG_PATH=$(realpath ${1:-"../packer/output/qemu-ubuntu/ubuntu-jammy.img"})
+  local IMG_PATH=$(realpath $1)
+
+  if [[ -z "$IMG_PATH" || ! -f "$IMG_PATH" ]]; then
+    >&2 echo "Please provide a valid path to a base image as first argument or place the image at '$IMG_PATH'"
+    exit 1
+  fi
+
   echo "Using base image: $IMG_PATH" >&2
 
   # Find users SSH key to add to authorized_keys later

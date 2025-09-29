@@ -32,7 +32,6 @@ publish: out/$(PACKAGE_FILE)
 .PHONY: clean
 clean:
 	rm -rf out
-	rm -rf packer/output
 
 .PHONY: test
 test:
@@ -43,20 +42,12 @@ test:
 check-fmt:
 	cd server && terraform fmt -check -diff .
 	cd example && terraform fmt -check -diff .
-	cd packer && packer fmt -check -diff .
 
 .PHONY: fmt
 fmt:
 	cd server && terraform fmt .
 	cd example && terraform fmt .
-	cd packer && packer fmt .
 
 .PHONY: release
 release:
 	gh release create $(VERSION) --title "Release $(VERSION)" --target main --generate-notes
-
-.PHONY: packer-build
-packer-build: packer/output/qemu-ubuntu/ubuntu-jammy.img
-
-packer/output/qemu-ubuntu/ubuntu-jammy.img:
-	PACKER_LOG=1 cd packer && packer build qemu-ubuntu.pkr.hcl

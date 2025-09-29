@@ -49,12 +49,6 @@ Grafana Cloud:
 - On a linux host, a local development server can be created using [`libvirt`](https://libvirt.org/)
 - This assumes a working setup of `libvirt`, [KVM](https://en.wikipedia.org/wiki/Kernel-based_Virtual_Machine) and [QEMU](https://www.qemu.org/) - A good intro can be found [here](https://joshrosso.com/docs/2020/2020-05-06-linux-hypervisor-setup/)
 - This allows rapid iteration of build and init scripts locally & is cheaper to run than a cloud instance
-- First, build the server base image:
-
-```
-make packer-build
-```
-
 - Create a `dev.tfvars` file with some basic credentials (see above)
 - Set `enabled=false` to avoid creating the actual server instance in the cloud 💸
 
@@ -65,16 +59,17 @@ gcloud_hosted_logs_id="<your-hosted-logs-id-here>"
 gcloud_hosted_metrics_id="<your-hosted-metrics-id-here>"
 bucket_name="<backup-bucket-name-here>"
 s3_endpoint="eu-central-1.linodeobjects.com"
-ingress= ["143.58.132.220/32"]
+ingress=["$(curl -sS https://api.ipify.org?format=json | jq -r '.ip')/32"]
 enabled=false
 EOF
 ```
 
+- The base images themselves are here: https://github.com/joerx/packer-linode-minecraft - Clone the repo locally and follow the instructions to build a QEMU based image for local testing (Take note of the output path)
 - Change into the example directory and run `local-server.sh` to run a local development server:
 
-```
-cd server/example
-./local-server.sh create # Create the VM
+```sh
+cd example
+./local-server.sh create <path-to-my-image> # Create the VM
 ./local-server.sh ssh # Login, may need to retry a few times
 ```
 

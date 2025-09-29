@@ -2,8 +2,11 @@
 hostname: ${HOSTNAME}
 create_hostname_file: true
 
+# This seems to be ineffective
+disable_root: true
+
 users:
-  - name: debian
+  - name: ${SSH_USER}
     ssh_authorized_keys:
       - ${SSH_PUBLIC_KEY}
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
