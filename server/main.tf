@@ -60,6 +60,7 @@ data "cloudinit_config" "init" {
     content_type = "text/cloud-config"
     filename     = "cloud-config.yaml"
     merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
+
     content = templatefile("${path.module}/init/cloud-init.yaml", {
       HOSTNAME               = local.label
       MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
@@ -73,28 +74,30 @@ data "cloudinit_config" "init" {
       REGION                 = var.region
       BACKUP_BUCKET          = var.backup.bucket
       SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
+      SSH_USER               = var.ssh_user
     })
   }
 
   # Adding this we will run into the maximum user-data size of 16kB. We are therefore
   # plannig to refactor our delivery pipeline to use Packer and disable this for now.
 
-  # dynamic "part" {
-  #   for_each = var.gcloud != null ? [1] : []
-  #   content {
-  #     content_type = "text/cloud-config"
-  #     filename     = "alloy.yaml"
-  #     merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
-  #     content = templatefile("${path.module}/init/alloy.yaml", {
-  #       GCLOUD_SCRAPE_INTERVAL    = var.gcloud.scrape_interval
-  #       GCLOUD_HOSTED_METRICS_URL = var.gcloud.hosted_metrics_url
-  #       GCLOUD_HOSTED_METRICS_ID  = var.gcloud.hosted_metrics_id
-  #       GCLOUD_HOSTED_LOGS_URL    = var.gcloud.hosted_logs_url
-  #       GCLOUD_HOSTED_LOGS_ID     = var.gcloud.hosted_logs_id
-  #       GCLOUD_RW_API_KEY         = var.gcloud.rw_api_key
-  #     })
-  #   }
-  # }
+  dynamic "part" {
+    for_each = var.gcloud != null ? [1] : []
+    content {
+      content_type = "text/cloud-config"
+      filename     = "alloy.yaml"
+      merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
+
+      content = templatefile("${path.module}/init/alloy.yaml", {
+        GCLOUD_SCRAPE_INTERVAL    = var.gcloud.scrape_interval
+        GCLOUD_HOSTED_METRICS_URL = var.gcloud.hosted_metrics_url
+        GCLOUD_HOSTED_METRICS_ID  = var.gcloud.hosted_metrics_id
+        GCLOUD_HOSTED_LOGS_URL    = var.gcloud.hosted_logs_url
+        GCLOUD_HOSTED_LOGS_ID     = var.gcloud.hosted_logs_id
+        GCLOUD_RW_API_KEY         = var.gcloud.rw_api_key
+      })
+    }
+  }
 
   part {
     content_type = "text/x-shellscript"
@@ -104,13 +107,15 @@ data "cloudinit_config" "init" {
 }
 
 resource "linode_instance" "mc" {
-  count           = var.enabled ? 1 : 0
-  label           = local.label
-  tags            = local.tags
-  image           = var.image
-  region          = var.region
-  type            = var.instance_type
-  root_pass       = random_password.root_pw.result
+  count     = var.enabled ? 1 : 0
+  label     = local.label
+  tags      = local.tags
+  image     = var.image
+  region    = var.region
+  type      = var.instance_type
+  root_pass = random_password.root_pw.result
+
+  # authorized_users = ["warden"]
   authorized_keys = [chomp(tls_private_key.ssh_key.public_key_openssh)]
 
   metadata {

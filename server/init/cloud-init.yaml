@@ -2,8 +2,11 @@
 hostname: ${HOSTNAME}
 create_hostname_file: true
 
+# This seems to be ineffective
+disable_root: true
+
 users:
-  - name: debian
+  - name: ${SSH_USER}
     ssh_authorized_keys:
       - ${SSH_PUBLIC_KEY}
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
@@ -23,6 +26,10 @@ packages:
   - unzip
 
 write_files:
+  - path: /etc/default/env-dumper
+    content: |
+      FOO=foo
+      THE_QUESTION="6x7"
   - path: /opt/minecraft/.aws/credentials
     owner: minecraft:minecraft
     permissions: '0600'

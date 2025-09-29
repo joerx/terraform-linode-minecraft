@@ -93,16 +93,21 @@ variable "level_seed" {
   default     = null
 }
 
-# variable "gcloud" {
-#   description = "Settings for Google Cloud hosted metrics and logs"
-#   default     = null
+variable "gcloud" {
+  description = "Settings for hosted metrics and logs"
+  default     = null
 
-#   type = object({
-#     hosted_metrics_id  = string
-#     hosted_logs_id     = string
-#     rw_api_key         = string
-#     scrape_interval    = optional(string, "60s")
-#     hosted_metrics_url = optional(string, "https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push")
-#     hosted_logs_url    = optional(string, "https://logs-prod-012.grafana.net/loki/api/v1/push")
-#   })
-# }
+  type = object({
+    hosted_metrics_id  = string
+    hosted_logs_id     = string
+    rw_api_key         = string
+    scrape_interval    = optional(string, "60s")
+    hosted_metrics_url = optional(string, "https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push")
+    hosted_logs_url    = optional(string, "https://logs-prod-012.grafana.net/loki/api/v1/push")
+  })
+}
+
+variable "ssh_user" {
+  description = "SSH user to create and use for login"
+  default     = "warden"
+}
