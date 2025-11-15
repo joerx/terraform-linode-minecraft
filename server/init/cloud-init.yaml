@@ -26,10 +26,6 @@ packages:
   - unzip
 
 write_files:
-  - path: /etc/default/env-dumper
-    content: |
-      FOO=foo
-      THE_QUESTION="6x7"
   - path: /opt/minecraft/.aws/credentials
     owner: minecraft:minecraft
     permissions: '0600'
