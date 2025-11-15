@@ -2,7 +2,20 @@
 
 set -e -o pipefail
 
+>&2 echo "Setting up minecraft server"
+>&2 echo "============================="
+stat /etc/default/minecraft-server
+
+>&2 echo "Loading defaults:"
+>&2 echo "------------------"
+cat "/etc/default/minecraft-server"
+
 . /etc/default/minecraft-server
+
+>&2 echo "------------------"
+>&2 echo "GAME_MODE=${GAME_MODE}"
+>&2 echo "DIFFICULTY=${DIFFICULTY}"
+>&2 echo "------------------"
 
 # AWS CLI
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -57,7 +70,7 @@ EOF
 
 
 # Write default server.properties
-cat <<- EOF > /opt/minecraft/server/server.properties.template
+cat <<- EOF > /opt/minecraft/server/server.properties
 #Minecraft server properties
 #(File modification date and time)
 enable-jmx-monitoring=false
