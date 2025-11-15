@@ -83,7 +83,6 @@ destroy_server() {
 }
 
 get_login() {
-
   local max=10
   local cmd
   local ip_addr
@@ -99,7 +98,7 @@ get_login() {
     if [[ ! -z "$ip_addr" ]]; then
       ssh-add -D
       terraform output -raw private_key_pem | ssh-add -
-      cmd="ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" debian@$ip_addr"
+      cmd="ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" warden@$ip_addr"
       $cmd
       exit 0
     fi
