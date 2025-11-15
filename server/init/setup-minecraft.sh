@@ -31,7 +31,7 @@ apt-get update && apt-get install -y java-21-amazon-corretto-jdk
 >&2 echo "Downloading mcrcon version ${MCRCON_VERSION}"
 mkdir -p /opt/minecraft/tools/mcrcon
 cd /opt/minecraft/tools/mcrcon
-wget https://github.com/Tiiffi/mcrcon/releases/download/v${MCRCON_VERSION}/mcrcon-${MCRCON_VERSION}-linux-x86-64.tar.gz
+wget -nv https://github.com/Tiiffi/mcrcon/releases/download/v${MCRCON_VERSION}/mcrcon-${MCRCON_VERSION}-linux-x86-64.tar.gz
 tar xzf mcrcon-${MCRCON_VERSION}-linux-x86-64.tar.gz
 rm mcrcon-${MCRCON_VERSION}-linux-x86-64.tar.gz
 
@@ -44,7 +44,7 @@ mkdir -p /opt/minecraft/server && chown minecraft:minecraft /opt/minecraft/serve
 cd /opt/minecraft/server
 
 >&2 echo "Download from ${MINECRAFT_DOWNLOAD_URL}"
-wget "${MINECRAFT_DOWNLOAD_URL}"
+wget -nv "${MINECRAFT_DOWNLOAD_URL}"
 >&2 echo "Download complete"
 
 
@@ -141,6 +141,11 @@ cat << EOF > /usr/local/bin/minecraft-backup
 #!/bin/bash
 set -e -o pipefail
 
+if [[ ! -f ./server.jar ]]; then
+  echo "Error: server.jar not found in current directory" >&2
+  exit 1
+fi
+
 export MCRCON_PASS=$(cat /opt/minecraft/.config/mcrcon.pw)
 
 ARCHIVE=\$(hostname).tgz
@@ -167,11 +172,15 @@ chmod +x /usr/local/bin/minecraft-backup
 # Restore script
 cat << EOF > /usr/local/bin/minecraft-restore
 #!/bin/bash
-
 set -e -o pipefail
 
-ARCHIVE=\$(hostname).tgz
-S3_URL=s3://${BACKUP_BUCKET}/worlds/\$ARCHIVE
+if [[ ! -f ./server.jar ]]; then
+  echo "Error: server.jar not found in current directory" >&2
+  exit 1
+fi
+
+S3_URL=\${1:-"s3://${BACKUP_BUCKET}/worlds/\$(hostname).tgz"}
+ARCHIVE=\$(basename \$S3_URL)
 
 echo "Trying to restore minecraft world from \$S3_URL"
 aws s3 cp \$S3_URL \$ARCHIVE
@@ -182,7 +191,9 @@ sleep 5s
 
 [[ -d world.bak ]] && rm -rf world.bak
 [[ -d world ]] && mv world world.bak
-tar xvzf \$ARCHIVE
+
+echo "Extracting \${ARCHIVE}"
+tar xzf \$ARCHIVE
 rm \$ARCHIVE
 
 echo "Starting minecraft"
