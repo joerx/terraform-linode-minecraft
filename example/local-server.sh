@@ -121,7 +121,7 @@ case "$1" in
     get_login
     ;;
   *)
-    echo "Usage: $0 {create|destroy}"
+    echo "Usage: $0 {create|destroy|ssh}" >&2
     exit 1
     ;;
 esac
