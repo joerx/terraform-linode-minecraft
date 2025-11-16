@@ -22,6 +22,7 @@ locals {
     RCON_PASSWORD          = random_password.rcon_pw.result
     RCON_VERSION           = "0.7.2"
     MAX_PLAYERS            = 20
+    BACKUP_SCHEDULE        = var.backup_schedule
   }
 }
 

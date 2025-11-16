@@ -34,7 +34,7 @@ echo "eula=true" > /opt/minecraft/server/eula.txt
 # Set ownership
 chown -R minecraft:minecraft /opt/minecraft/server
 
-cat <<EOF > /etc/systemd/system/minecraft.service
+cat <<'EOF' > /etc/systemd/system/minecraft.service
   [Unit]  
   Description=Minecraft Server
   After=network.target
@@ -50,7 +50,7 @@ cat <<EOF > /etc/systemd/system/minecraft.service
   ReadWriteDirectories=/opt/minecraft/server
   EnvironmentFile=/etc/default/minecraft
   ExecStart=/usr/bin/java -Xmx1024M -Xms1024M -jar server.jar nogui
-  ExecStop=/opt/minecraft/tools/mcrcon/mcrcon -H 127.0.0.1 -P 25575 -p $${RCON_PASSWORD} stop
+  ExecStop=/opt/minecraft/tools/mcrcon/mcrcon -H 127.0.0.1 -P 25575 -p $RCON_PASSWORD stop
 
   [Install]
   WantedBy=multi-user.target

@@ -75,26 +75,29 @@ write_files:
         exit 1
       fi
 
-      export MCRCON_PASS="${RCON_PASSWORD}"
+      if [[ -z "$RCON_PASSWORD" ]]; then
+        echo "Error: RCON_PASSWORD is not set" >&2
+        exit 1
+      fi
 
       ARCHIVE=$(hostname).tgz
       S3_URL=s3://${BACKUP_BUCKET}/worlds/$ARCHIVE
 
-      echo "Backing up minecraft world data"
+      echo "Saving world state to disk"
+      export MCRCON_PASS="$${RCON_PASSWORD}"
+      /opt/minecraft/tools/mcrcon/mcrcon "save-all flush"
+      sleep 3s # wait for flush to complete 
+      tar czf $ARCHIVE world
 
+      echo "Uploading world data to $S3_URL"
       # See https://github.com/boto/boto3/issues/4398
       export AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
       export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED
-
-      /opt/minecraft/tools/mcrcon/mcrcon "save-all flush"
-      tar cvzf $ARCHIVE world
-
-      echo "Uploading world data to $S3_URL"
       aws s3 cp $ARCHIVE $S3_URL
       rm $ARCHIVE
 
       echo "Backup complete"
-        
+
   # Restore script
   - path: /usr/local/bin/minecraft-restore
     permissions: '0755'
@@ -126,6 +129,36 @@ write_files:
 
       echo "Starting minecraft"
       sudo systemctl start minecraft
+
+  # Unit files for periodic backups
+  - path: /etc/systemd/system/minecraft-backup.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Minecraft World Backup Job
+
+      [Service]
+      Type=oneshot
+      User=minecraft
+      WorkingDirectory=/opt/minecraft/server
+      ReadWriteDirectories=/opt/minecraft/server
+      EnvironmentFile=/etc/default/minecraft
+      ExecStart=/usr/local/bin/minecraft-backup
+
+  - path: /etc/systemd/system/minecraft-backup.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Task to run periodic Minecraft World Backup
+
+      [Timer]
+      Persistent=no
+      OnCalendar=${BACKUP_SCHEDULE}
+      RandomizedDelaySec=5m
+      Unit=minecraft-backup.service
+
+      [Install]
+      WantedBy=timers.target
 
   # Minecraft server configuration
   - path: /opt/minecraft/server/server.properties
@@ -191,3 +224,7 @@ write_files:
       spawn-protection=16
       resource-pack-sha1=
       max-world-size=29999984
+
+runcmd:
+  - systemctl daemon-reload
+  - systemctl start minecraft-backup.timer
