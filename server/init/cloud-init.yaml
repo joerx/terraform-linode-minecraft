@@ -2,7 +2,7 @@
 hostname: ${HOSTNAME}
 create_hostname_file: true
 
-# This seems to be ineffective
+# This seems to be ineffective?
 disable_root: true
 
 users:
@@ -17,6 +17,14 @@ users:
 # We need the user to exist before we write files owned by them
 bootcmd:
   - useradd --home-dir /opt/minecraft --shell /bin/bash --user-group --create-home minecraft
+  - echo 'minecraft ALL=NOPASSWD:/usr/bin/systemctl stop minecraft,/usr/bin/systemctl start minecraft' > /etc/sudoers.d/minecraft
+
+apt:
+  sources:
+    aws-coretto:
+      keyid: B04F24E3
+      keyserver: https://apt.corretto.aws/corretto.key
+      source: deb [signed-by=$KEY_FILE] https://apt.corretto.aws stable main
 
 package_update: true
 package_upgrade: true
@@ -24,6 +32,7 @@ packages:
   - pwgen
   - gnupg2
   - unzip
+  - java-21-amazon-corretto-jdk
 
 write_files:
   - path: /opt/minecraft/.aws/credentials
@@ -47,17 +56,175 @@ write_files:
         endpoint_url = https://${OSS_ENDPOINT}
         addressing_style = path
 
-  - path: /etc/default/minecraft-server
+  - path: /etc/default/minecraft
     owner: root:root
+    permissions: '0600'
+    content: |
+      RCON_PASSWORD='${RCON_PASSWORD}'
+
+  # Backup script
+  # FIXME: hardcoded password
+  - path: /usr/local/bin/minecraft-backup
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e -o pipefail
+
+      if [[ ! -f ./server.jar ]]; then
+        echo "Error: server.jar not found in current directory" >&2
+        exit 1
+      fi
+
+      if [[ -z "$RCON_PASSWORD" ]]; then
+        echo "Error: RCON_PASSWORD is not set" >&2
+        exit 1
+      fi
+
+      ARCHIVE=$(hostname).tgz
+      S3_URL=s3://${BACKUP_BUCKET}/worlds/$ARCHIVE
+
+      echo "Saving world state to disk"
+      export MCRCON_PASS="$${RCON_PASSWORD}"
+      /opt/minecraft/tools/mcrcon/mcrcon "save-all flush"
+      sleep 3s # wait for flush to complete 
+      tar czf $ARCHIVE world
+
+      echo "Uploading world data to $S3_URL"
+      # See https://github.com/boto/boto3/issues/4398
+      export AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
+      export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED
+      aws s3 cp $ARCHIVE $S3_URL
+      rm $ARCHIVE
+
+      echo "Backup complete"
+
+  # Restore script
+  - path: /usr/local/bin/minecraft-restore
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e -o pipefail
+
+      if [[ ! -f ./server.jar ]]; then
+        echo "Error: server.jar not found in current directory" >&2
+        exit 1
+      fi
+
+      S3_URL=$${1:-"s3://${BACKUP_BUCKET}/worlds/$(hostname).tgz"}
+      ARCHIVE=$(basename $S3_URL)
+
+      echo "Trying to restore minecraft world from $S3_URL"
+      aws s3 cp $S3_URL $ARCHIVE
+
+      echo "Stopping minecraft"
+      sudo systemctl stop minecraft
+      sleep 5s
+
+      [[ -d world.bak ]] && rm -rf world.bak
+      [[ -d world ]] && mv world world.bak
+
+      echo "Extracting $ARCHIVE"
+      tar xzf $ARCHIVE
+      rm $ARCHIVE
+
+      echo "Starting minecraft"
+      sudo systemctl start minecraft
+
+  # Unit files for periodic backups
+  - path: /etc/systemd/system/minecraft-backup.service
     permissions: '0644'
     content: |
-      MINECRAFT_DOWNLOAD_URL=${MINECRAFT_DOWNLOAD_URL}
-      MAX_PLAYERS=20
-      LEVEL_NAME=${LEVEL_NAME}
-      LEVEL_SEED=${LEVEL_SEED}  
-      GAME_MODE=${GAME_MODE}
-      DIFFICULTY=${DIFFICULTY}
-      BACKUP_BUCKET=${BACKUP_BUCKET}
-      BACKUP_SCHEDULE="0 2 * * *"
-      MCRCON_VERSION=0.7.2
-  
+      [Unit]
+      Description=Minecraft World Backup Job
+
+      [Service]
+      Type=oneshot
+      User=minecraft
+      WorkingDirectory=/opt/minecraft/server
+      ReadWriteDirectories=/opt/minecraft/server
+      EnvironmentFile=/etc/default/minecraft
+      ExecStart=/usr/local/bin/minecraft-backup
+
+  - path: /etc/systemd/system/minecraft-backup.timer
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Task to run periodic Minecraft World Backup
+
+      [Timer]
+      Persistent=no
+      OnCalendar=${BACKUP_SCHEDULE}
+      RandomizedDelaySec=5m
+      Unit=minecraft-backup.service
+
+      [Install]
+      WantedBy=timers.target
+
+  # Minecraft server configuration
+  - path: /opt/minecraft/server/server.properties
+    permissions: '0600'
+    owner: minecraft:minecraft
+    content: |
+      # Write default server.properties
+      #Minecraft server properties
+      #(File modification date and time)
+      enable-jmx-monitoring=false
+      level-seed=${LEVEL_SEED}
+      gamemode=${GAME_MODE}
+      enable-command-block=false
+      enable-query=false
+      generator-settings={}
+      enforce-secure-profile=true
+      level-name=${LEVEL_NAME}
+      motd=${HOSTNAME}
+      query.port=25565
+      pvp=true
+      generate-structures=true
+      max-chained-neighbor-updates=1000000
+      difficulty=${DIFFICULTY}
+      network-compression-threshold=256
+      max-tick-time=60000
+      require-resource-pack=false
+      use-native-transport=true
+      max-players=${MAX_PLAYERS}
+      online-mode=true
+      enable-status=true
+      allow-flight=false
+      initial-disabled-packs=
+      broadcast-rcon-to-ops=true
+      view-distance=10
+      server-ip=
+      resource-pack-prompt=
+      allow-nether=true
+      server-port=25565
+      enable-rcon=true
+      rcon.password=${RCON_PASSWORD}
+      rcon.port=25575
+      sync-chunk-writes=true
+      op-permission-level=4
+      prevent-proxy-connections=false
+      hide-online-players=false
+      resource-pack=
+      entity-broadcast-range-percentage=100
+      simulation-distance=10
+      player-idle-timeout=0
+      force-gamemode=false
+      rate-limit=0
+      hardcore=false
+      white-list=false
+      broadcast-console-to-ops=true
+      spawn-npcs=true
+      spawn-animals=true
+      function-permission-level=2
+      initial-enabled-packs=vanilla
+      level-type=minecraft\:normal
+      text-filtering-config=
+      spawn-monsters=true
+      enforce-whitelist=false
+      spawn-protection=16
+      resource-pack-sha1=
+      max-world-size=29999984
+
+runcmd:
+  - systemctl daemon-reload
+  - systemctl start minecraft-backup.timer

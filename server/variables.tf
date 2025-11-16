@@ -111,3 +111,9 @@ variable "ssh_user" {
   description = "SSH user to create and use for login"
   default     = "warden"
 }
+
+variable "backup_schedule" {
+  description = "Cron schedule for backups in systemd OnCalendar format"
+  type        = string
+  default     = "*-*-* 03:00:00"
+}

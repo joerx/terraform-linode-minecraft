@@ -4,6 +4,26 @@ locals {
   hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
   public_ip   = var.enabled ? tolist(linode_instance.mc[0].ipv4)[0] : null
+
+  mc_settings = {
+    HOSTNAME               = local.label
+    MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
+    OSS_ACCESS_KEY_ID      = linode_object_storage_key.k.access_key
+    OSS_SECRET_ACCESS_KEY  = linode_object_storage_key.k.secret_key
+    OSS_ENDPOINT           = var.backup.endpoint
+    LEVEL_SEED             = var.level_seed == null ? "" : var.level_seed
+    LEVEL_NAME             = "world"
+    GAME_MODE              = var.game_mode
+    DIFFICULTY             = var.difficulty
+    REGION                 = var.region
+    BACKUP_BUCKET          = var.backup.bucket
+    SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
+    SSH_USER               = var.ssh_user
+    RCON_PASSWORD          = random_password.rcon_pw.result
+    RCON_VERSION           = "0.7.2"
+    MAX_PLAYERS            = 20
+    BACKUP_SCHEDULE        = var.backup_schedule
+  }
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -19,6 +39,11 @@ resource "random_string" "s" {
 
 resource "random_password" "root_pw" {
   length = 20
+}
+
+resource "random_password" "rcon_pw" {
+  length  = 20
+  special = false
 }
 
 resource "linode_firewall" "fw" {
@@ -56,31 +81,6 @@ data "cloudinit_config" "init" {
   gzip          = false
   base64_encode = true
 
-  part {
-    content_type = "text/cloud-config"
-    filename     = "cloud-config.yaml"
-    merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
-
-    content = templatefile("${path.module}/init/cloud-init.yaml", {
-      HOSTNAME               = local.label
-      MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
-      OSS_ACCESS_KEY_ID      = linode_object_storage_key.k.access_key
-      OSS_SECRET_ACCESS_KEY  = linode_object_storage_key.k.secret_key
-      OSS_ENDPOINT           = var.backup.endpoint
-      LEVEL_SEED             = var.level_seed == null ? "" : var.level_seed
-      LEVEL_NAME             = "world"
-      GAME_MODE              = var.game_mode
-      DIFFICULTY             = var.difficulty
-      REGION                 = var.region
-      BACKUP_BUCKET          = var.backup.bucket
-      SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
-      SSH_USER               = var.ssh_user
-    })
-  }
-
-  # Adding this we will run into the maximum user-data size of 16kB. We are therefore
-  # plannig to refactor our delivery pipeline to use Packer and disable this for now.
-
   dynamic "part" {
     for_each = var.gcloud != null ? [1] : []
     content {
@@ -100,9 +100,17 @@ data "cloudinit_config" "init" {
   }
 
   part {
+    content_type = "text/cloud-config"
+    filename     = "cloud-config.yaml"
+    merge_type   = "list(append)+dict(no_replace,recurse_list)+str()"
+
+    content = templatefile("${path.module}/init/cloud-init.yaml", local.mc_settings)
+  }
+
+  part {
     content_type = "text/x-shellscript"
     filename     = "setup-minecraft.sh"
-    content      = file("${path.module}/init/setup-minecraft.sh")
+    content      = templatefile("${path.module}/init/setup-minecraft.sh", local.mc_settings)
   }
 }
 
