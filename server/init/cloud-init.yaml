@@ -227,4 +227,4 @@ write_files:
 
 runcmd:
   - systemctl daemon-reload
-  - systemctl start minecraft-backup.timer
+  - systemctl enable minecraft-backup.timer --now
