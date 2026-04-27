@@ -1,0 +1,18 @@
+    apiVersion: backstage.io/v1alpha1
+    kind: Component
+    metadata:
+      name: terraform-minecraft-server
+      description: Terraform module to deploy minecraft game servers
+      annotations:
+        github.com/project-slug: joerx/terraform-linode-minecraft
+      tags:
+        - terraform
+      links:
+        - url: https://github.com/joerx/terraform-linode-minecraft/releases
+          title: Releases
+          icon: storage
+    spec:
+      type: library
+      lifecycle: stable
+      owner: infra-team
+      system: terraforge
