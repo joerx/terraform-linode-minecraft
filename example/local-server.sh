@@ -74,6 +74,8 @@ create_server() {
       --os-variant=$OS_VARIANT \
       --memorybacking access.mode=shared \
       --noautoconsole
+
+  echo "domain created, run $0 ssh to login"
 }
 
 destroy_server() {
@@ -82,17 +84,20 @@ destroy_server() {
   rm -rf $VMDIR
 }
 
+get_ip() {
+  local mac_addr
+  mac_addr=$(virsh dumpxml $NAME | grep "mac address" | sed "s/.*'\(.*\)'.*/\1/")
+  arp -n | grep "$mac_addr" | awk '{print $1}'
+}
+
 get_login() {
   local max=10
   local cmd
   local ip_addr
-  local mac_addr
 
   for ((i=1; i<=$max; i++)); do
-    mac_addr=$(virsh dumpxml $NAME | grep "mac address" | sed "s/.*'\(.*\)'.*/\1/")
-
     set +e
-    ip_addr=$(arp -n | grep "$mac_addr" | awk '{print $1}')
+    ip_addr=$(get_ip)
     set -e
 
     if [[ ! -z "$ip_addr" ]]; then
@@ -116,6 +121,9 @@ case "$1" in
     ;;
   destroy)
     destroy_server
+    ;;
+  ip)
+    get_ip
     ;;
   login|ssh)
     get_login

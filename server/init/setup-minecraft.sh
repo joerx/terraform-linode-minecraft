@@ -56,6 +56,14 @@ cat <<'EOF' > /etc/systemd/system/minecraft.service
   WantedBy=multi-user.target
 EOF
 
+# If MINECRAFT_WORLD_URL is set, download and extract archive
+if [[ ! -z "${MINECRAFT_WORLD_URL}" ]]; then
+  >&2 echo "Restoring world state from '${MINECRAFT_WORLD_URL}'"
+  ARCHIVE=$(basename "${MINECRAFT_WORLD_URL}")
+  su minecraft -c "aws s3 cp ${MINECRAFT_WORLD_URL} /opt/minecraft/server/$ARCHIVE"
+  su minecraft -c "tar xzf /opt/minecraft/server/$ARCHIVE -C /opt/minecraft/server"
+fi
+
 # Start minecraft
 >&2 echo "Starting minecraft"
 

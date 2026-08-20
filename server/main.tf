@@ -8,6 +8,7 @@ locals {
   mc_settings = {
     HOSTNAME               = local.label
     MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
+    MINECRAFT_WORLD_URL    = var.minecraft_world_url != null ? var.minecraft_world_url : ""
     OSS_ACCESS_KEY_ID      = linode_object_storage_key.k.access_key
     OSS_SECRET_ACCESS_KEY  = linode_object_storage_key.k.secret_key
     OSS_ENDPOINT           = var.backup.endpoint

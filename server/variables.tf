@@ -61,6 +61,17 @@ variable "minecraft_version" {
   default     = "1.19.3"
 }
 
+variable "minecraft_world_url" {
+  description = "S3 URL to download Minecraft world state from"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.minecraft_world_url == null || startswith(var.minecraft_world_url, "s3://")
+    error_message = "minecraft_world_url must be an S3 URL starting with s3://"
+  }
+}
+
 variable "game_mode" {
   description = "Game mode for Minecraft server"
   default     = "survival"

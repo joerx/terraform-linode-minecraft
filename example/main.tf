@@ -23,9 +23,10 @@ module "server" {
   stage   = local.stage
   region  = local.region
 
-  minecraft_version = "1.21.8"
-  game_mode         = "creative"
-  difficulty        = "peaceful"
+  minecraft_version   = "1.21.8"
+  game_mode           = "creative"
+  difficulty          = "peaceful"
+  minecraft_world_url = var.minecraft_world_url
 
   image   = var.image
   ingress = var.ingress
