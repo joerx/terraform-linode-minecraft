@@ -183,3 +183,28 @@ run "oss_endpoint_set" {
     error_message = "OSS endpoint not set correctly in stackscript data"
   }
 }
+
+run "minecraft_world_url_must_start_with_s3" {
+  command = plan
+
+  variables {
+    name                = run.setup.random_pet
+    minecraft_world_url = "http://example.com/worlds/my-world.tgz"
+  }
+
+  expect_failures = [
+    var.minecraft_world_url,
+  ]
+}
+
+run "minecraft_world_url_from_s3" {
+  variables {
+    name                = run.setup.random_pet
+    minecraft_world_url = "s3://my-bucket/worlds/my-world.tgz"
+  }
+
+  assert {
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "s3://my-bucket/worlds/my-world.tgz")])
+    error_message = "minecraft_world_url not set correctly in cloud-init config"
+  }
+}
