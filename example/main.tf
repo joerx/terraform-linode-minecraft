@@ -23,7 +23,7 @@ module "server" {
   stage   = local.stage
   region  = local.region
 
-  minecraft_version   = "1.21.8"
+  minecraft_version   = "26.1.2"
   game_mode           = "creative"
   difficulty          = "peaceful"
   minecraft_world_url = var.minecraft_world_url
