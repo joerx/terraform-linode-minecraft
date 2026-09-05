@@ -37,7 +37,7 @@ make test
 Backup Storage:
 
 - Linode account, OSS bucket name and S3 endpoints for the development environment
-- Use https://github.com/joerx/terraform-linode-bucket to create the bucket
+- Use https://github.com/zuse-cc/terraform-linode-bucket to create the bucket
 
 Grafana Cloud:
 
