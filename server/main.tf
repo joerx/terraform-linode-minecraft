@@ -4,11 +4,12 @@ locals {
   hostname    = "${var.name}-${random_string.s.result}"
   tags        = ["service:${var.service}", "stage:${var.stage}", "name:${var.name}"]
   public_ip   = var.enabled ? tolist(linode_instance.mc[0].ipv4)[0] : null
+  world_url   = "s3://${var.backup.bucket}/levels/${random_uuid.backup_key.result}/world.tgz"
 
   mc_settings = {
     HOSTNAME               = local.label
     MINECRAFT_DOWNLOAD_URL = local.minecraft_download_urls[var.minecraft_version]
-    MINECRAFT_WORLD_URL    = var.minecraft_world_url != null ? var.minecraft_world_url : ""
+    MINECRAFT_WORLD_URL    = local.world_url
     OSS_ACCESS_KEY_ID      = linode_object_storage_key.k.access_key
     OSS_SECRET_ACCESS_KEY  = linode_object_storage_key.k.secret_key
     OSS_ENDPOINT           = var.backup.endpoint
@@ -17,7 +18,6 @@ locals {
     GAME_MODE              = var.game_mode
     DIFFICULTY             = var.difficulty
     REGION                 = var.region
-    BACKUP_BUCKET          = var.backup.bucket
     SSH_PUBLIC_KEY         = chomp(tls_private_key.ssh_key.public_key_openssh)
     SSH_USER               = var.ssh_user
     RCON_PASSWORD          = random_password.rcon_pw.result
@@ -25,6 +25,9 @@ locals {
     MAX_PLAYERS            = 20
     BACKUP_SCHEDULE        = var.backup_schedule
   }
+}
+
+resource "random_uuid" "backup_key" {
 }
 
 resource "tls_private_key" "ssh_key" {

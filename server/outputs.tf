@@ -32,3 +32,7 @@ output "ssh_port" {
 output "cloud_config" {
   value = data.cloudinit_config.init.rendered
 }
+
+output "world_url" {
+  value = local.world_url
+}

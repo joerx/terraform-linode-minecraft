@@ -184,27 +184,60 @@ run "oss_endpoint_set" {
   }
 }
 
-run "minecraft_world_url_must_start_with_s3" {
-  command = plan
-
+run "world_url_bound_to_workspace" {
   variables {
-    name                = run.setup.random_pet
-    minecraft_world_url = "http://example.com/worlds/my-world.tgz"
-  }
-
-  expect_failures = [
-    var.minecraft_world_url,
-  ]
-}
-
-run "minecraft_world_url_from_s3" {
-  variables {
-    name                = run.setup.random_pet
-    minecraft_world_url = "s3://my-bucket/worlds/my-world.tgz"
+    name = run.setup.random_pet
   }
 
   assert {
-    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "s3://my-bucket/worlds/my-world.tgz")])
-    error_message = "minecraft_world_url not set correctly in cloud-init config"
+    condition     = startswith(output.world_url, "s3://${var.backup.bucket}/")
+    error_message = "world_url should be an s3 URL scoped to the configured backup bucket"
+  }
+
+  assert {
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, output.world_url)])
+    error_message = "world_url not set correctly in cloud-init config"
+  }
+}
+
+run "disabled_server_retains_storage_key" {
+  variables {
+    name    = run.setup.random_pet
+    enabled = false
+  }
+
+  assert {
+    condition     = length(linode_instance.mc) == 0
+    error_message = "expected no Linode instance to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_firewall.fw) == 0
+    error_message = "expected no firewall to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_firewall_device.d) == 0
+    error_message = "expected no firewall device to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_domain_record.n) == 0
+    error_message = "expected no domain record to be created when disabled"
+  }
+
+  assert {
+    condition     = output.public_ip == null
+    error_message = "expected public_ip output to be null when disabled"
+  }
+
+  assert {
+    condition     = output.label == null
+    error_message = "expected label output to be null when disabled"
+  }
+
+  assert {
+    condition     = anytrue([for b in linode_object_storage_key.k.bucket_access : b.bucket_name == var.backup.bucket])
+    error_message = "expected object storage key to be retained in state when disabled"
   }
 }
