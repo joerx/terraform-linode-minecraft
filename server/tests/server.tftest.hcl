@@ -199,3 +199,45 @@ run "world_url_bound_to_workspace" {
     error_message = "world_url not set correctly in cloud-init config"
   }
 }
+
+run "disabled_server_retains_storage_key" {
+  variables {
+    name    = run.setup.random_pet
+    enabled = false
+  }
+
+  assert {
+    condition     = length(linode_instance.mc) == 0
+    error_message = "expected no Linode instance to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_firewall.fw) == 0
+    error_message = "expected no firewall to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_firewall_device.d) == 0
+    error_message = "expected no firewall device to be created when disabled"
+  }
+
+  assert {
+    condition     = length(linode_domain_record.n) == 0
+    error_message = "expected no domain record to be created when disabled"
+  }
+
+  assert {
+    condition     = output.public_ip == null
+    error_message = "expected public_ip output to be null when disabled"
+  }
+
+  assert {
+    condition     = output.label == null
+    error_message = "expected label output to be null when disabled"
+  }
+
+  assert {
+    condition     = anytrue([for b in linode_object_storage_key.k.bucket_access : b.bucket_name == var.backup.bucket])
+    error_message = "expected object storage key to be retained in state when disabled"
+  }
+}
