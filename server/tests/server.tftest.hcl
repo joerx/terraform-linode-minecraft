@@ -184,27 +184,18 @@ run "oss_endpoint_set" {
   }
 }
 
-run "minecraft_world_url_must_start_with_s3" {
-  command = plan
-
+run "world_url_bound_to_workspace" {
   variables {
-    name                = run.setup.random_pet
-    minecraft_world_url = "http://example.com/worlds/my-world.tgz"
-  }
-
-  expect_failures = [
-    var.minecraft_world_url,
-  ]
-}
-
-run "minecraft_world_url_from_s3" {
-  variables {
-    name                = run.setup.random_pet
-    minecraft_world_url = "s3://my-bucket/worlds/my-world.tgz"
+    name = run.setup.random_pet
   }
 
   assert {
-    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, "s3://my-bucket/worlds/my-world.tgz")])
-    error_message = "minecraft_world_url not set correctly in cloud-init config"
+    condition     = startswith(output.world_url, "s3://${var.backup.bucket}/")
+    error_message = "world_url should be an s3 URL scoped to the configured backup bucket"
+  }
+
+  assert {
+    condition     = anytrue([for p in data.cloudinit_config.init.part[*].content : strcontains(p, output.world_url)])
+    error_message = "world_url not set correctly in cloud-init config"
   }
 }
