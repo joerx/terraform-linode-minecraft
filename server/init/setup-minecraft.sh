@@ -2,6 +2,9 @@
 
 set -e -o pipefail
 
+# Load environment variables from defaults
+test -f /etc/default/minecraft && echo "loading defaults from /etc/default/minecraft" && source /etc/default/minecraft
+
 # AWS CLI
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip -q awscliv2.zip
@@ -51,12 +54,19 @@ cat <<'EOF' > /etc/systemd/system/minecraft.service
   WantedBy=multi-user.target
 EOF
 
-# If MINECRAFT_WORLD_URL is set, download and extract archive
-if [[ ! -z "${MINECRAFT_WORLD_URL}" ]]; then
-  >&2 echo "Restoring world state from '${MINECRAFT_WORLD_URL}'"
-  ARCHIVE=$(basename "${MINECRAFT_WORLD_URL}")
-  su minecraft -c "aws s3 cp ${MINECRAFT_WORLD_URL} /opt/minecraft/server/$ARCHIVE"
-  su minecraft -c "tar xzf /opt/minecraft/server/$ARCHIVE -C /opt/minecraft/server"
+# If MINECRAFT_WORLD_URL is set and the backup already exists, download and
+# extract it. The URL is bound to the Terraform workspace rather than the
+# instance, so on first boot no backup may exist yet - in that case skip the
+# restore and let the scheduled backup job perform a lazy init.
+if [[ ! -z "$MINECRAFT_WORLD_URL" ]]; then
+  if su minecraft -c "aws s3 ls '${MINECRAFT_WORLD_URL}'" > /dev/null 2>&1; then
+    >&2 echo "Restoring world state from '$MINECRAFT_WORLD_URL'"
+    ARCHIVE=$(basename "$MINECRAFT_WORLD_URL")
+    su minecraft -c "aws s3 cp ${MINECRAFT_WORLD_URL} /opt/minecraft/server/$ARCHIVE"
+    su minecraft -c "tar xzf /opt/minecraft/server/$ARCHIVE -C /opt/minecraft/server"
+  else
+    >&2 echo "No existing world state found at '$MINECRAFT_WORLD_URL', skipping restore"
+  fi
 fi
 
 # Start minecraft

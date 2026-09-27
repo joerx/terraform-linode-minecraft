@@ -45,8 +45,3 @@ variable "image" {
   type        = string
   description = "Image to use for the instance"
 }
-
-variable "minecraft_world_url" {
-  type    = string
-  default = null
-}

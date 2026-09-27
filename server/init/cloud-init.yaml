@@ -61,6 +61,7 @@ write_files:
     permissions: '0600'
     content: |
       RCON_PASSWORD='${RCON_PASSWORD}'
+      MINECRAFT_WORLD_URL='${MINECRAFT_WORLD_URL}'
 
   # Backup script
   # FIXME: hardcoded password
@@ -80,55 +81,27 @@ write_files:
         exit 1
       fi
 
-      ARCHIVE=$(hostname).tgz
-      S3_URL=s3://${BACKUP_BUCKET}/worlds/$ARCHIVE
+      if [[ -z "$MINECRAFT_WORLD_URL" ]]; then
+        echo "Error: MINECRAFT_WORLD_URL is not set" >&2
+        exit 1
+      fi
+
+      ARCHIVE=$(basename "$MINECRAFT_WORLD_URL")
 
       echo "Saving world state to disk"
       export MCRCON_PASS="$${RCON_PASSWORD}"
       /opt/minecraft/tools/mcrcon/mcrcon "save-all flush"
-      sleep 3s # wait for flush to complete 
+      sleep 3s # wait for flush to complete
       tar czf $ARCHIVE world
 
-      echo "Uploading world data to $S3_URL"
+      echo "Uploading world data to $MINECRAFT_WORLD_URL"
       # See https://github.com/boto/boto3/issues/4398
       export AWS_RESPONSE_CHECKSUM_VALIDATION=WHEN_REQUIRED
       export AWS_REQUEST_CHECKSUM_CALCULATION=WHEN_REQUIRED
-      aws s3 cp $ARCHIVE $S3_URL
+      aws s3 cp $ARCHIVE $MINECRAFT_WORLD_URL
       rm $ARCHIVE
 
       echo "Backup complete"
-
-  # Restore script
-  - path: /usr/local/bin/minecraft-restore
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      set -e -o pipefail
-
-      if [[ ! -f ./server.jar ]]; then
-        echo "Error: server.jar not found in current directory" >&2
-        exit 1
-      fi
-
-      S3_URL=$${1:-"s3://${BACKUP_BUCKET}/worlds/$(hostname).tgz"}
-      ARCHIVE=$(basename $S3_URL)
-
-      echo "Trying to restore minecraft world from $S3_URL"
-      aws s3 cp $S3_URL $ARCHIVE
-
-      echo "Stopping minecraft"
-      sudo systemctl stop minecraft
-      sleep 5s
-
-      [[ -d world.bak ]] && rm -rf world.bak
-      [[ -d world ]] && mv world world.bak
-
-      echo "Extracting $ARCHIVE"
-      tar xzf $ARCHIVE
-      rm $ARCHIVE
-
-      echo "Starting minecraft"
-      sudo systemctl start minecraft
 
   # Unit files for periodic backups
   - path: /etc/systemd/system/minecraft-backup.service
